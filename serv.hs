@@ -8,7 +8,7 @@ import Data.Char (ord, isDigit)
 import qualified Data.Map as M
 import Text.Parsec (parse, many1) --cabal install parsec
 import Text.Parsec.ByteString (Parser)
-import Text.Parsec.Char (digit, char, string, space, endOfLine)
+import Text.Parsec.Char (digit, char, string, spaces, endOfLine)
 import Control.Applicative ((<|>))
 
 
@@ -22,14 +22,14 @@ calcExpr s = case parse parseExpr "" s of
 
 parseExpr :: Parser (Char, Int, Int)
 parseExpr = do
-    string "CALC "
+    string "CALC"
+    spaces
     op <- char '*' <|> char '/' <|> char '-' <|> char '+'
-    space
+    spaces
     x <- many1 digit
-    space
+    spaces
     y <- many1 digit
-    space
-    endOfLine
+    spaces
     return (op, read x, read y)
 
 main = do

@@ -1,5 +1,3 @@
-*.hi
-
 # Ignore all
 *
 
@@ -10,3 +8,6 @@
 !*/
 
 ### Above combination will ignore all files without extension ###
+
+*.hi
+*.o
