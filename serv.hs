@@ -1,48 +1,34 @@
-import Prelude hiding (span)
 import Network.WebSockets --cabal install network, cabal install websockets
 import System.IO
-import System.Environment (getArgs)
 import qualified Data.ByteString.Char8 as BSC
 import Data.Word (Word8)
 import Data.Char (ord, isDigit)
-import qualified Data.Map as M
-import Text.Parsec (parse, many1) --cabal install parsec
-import Text.Parsec.ByteString (Parser)
-import Text.Parsec.Char (digit, char, string, spaces, endOfLine)
-import Control.Applicative ((<|>))
+import Language.Haskell.Interpreter --cabal install hint
+import Control.Concurrent.MVar
+import Control.Exception
 
-
-
-ops = M.fromList [('*', (*)), ('-', (\a b -> a - b)), ('/', div), ('+', (+))]
-
-calcExpr :: BSC.ByteString -> Maybe Int
-calcExpr s = case parse parseExpr "" s of
-                 Right (op, x, y) -> M.lookup op ops >>= \o -> Just $ o x y
-                 _          -> Nothing
-
-parseExpr :: Parser (Char, Int, Int)
-parseExpr = do
-    string "CALC"
-    spaces
-    op <- char '*' <|> char '/' <|> char '-' <|> char '+'
-    spaces
-    x <- many1 digit
-    spaces
-    y <- many1 digit
-    spaces
-    return (op, read x, read y)
+--calcExpr :: BSC.ByteString -> Maybe Int
+calcExpr s = let [_, op, x, y] = words $ BSC.unpack s
+                 e =  x ++ " " ++ op ++ " " ++ y
+             in runInterpreter $ setImports ["Prelude"] >> eval e
 
 main = do
-    port <- read . head <$> getArgs
+    let port =  28563
     putStrLn $ "Listening on port : " ++ show port
-    runServer "127.0.0.1" port handleConnection
+    connsCnt <- newMVar 0
+    runServer "127.0.0.1" port (handleConnection connsCnt)
   where
-    handleConnection pending = do --handleConnection :: PendingConnection -> IO ()
+    handleConnection connsCnt pending = do --handleConnection :: PendingConnection -> IO ()
         connection <- acceptRequest pending --calcRequest :: PendingConnection -> IO Connection
+        cnt <- (+1) <$> takeMVar connsCnt
+        putMVar connsCnt cnt
+        putStrLn $ "connected clients: " ++ show cnt
         let calcRequest = do
             commandMsg <- receiveData connection
-            case calcExpr commandMsg of
-                (Just x) -> sendTextData connection $ BSC.pack $ "OK " ++ show x ++ " \n"
+            res <- calcExpr commandMsg
+            case res of
+                (Right x) -> sendTextData connection $ BSC.pack $ "OK " ++ x ++ " \n"
                 _        -> sendTextData connection $ BSC.pack "ERR \n"
             calcRequest
-        calcRequest
+        catch calcRequest (\(SomeException _) -> do {cnt <- (subtract 1) <$> takeMVar connsCnt;
+         putMVar connsCnt cnt;  putStrLn $ "connected clients: " ++ show cnt})
