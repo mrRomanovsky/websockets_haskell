@@ -1,6 +1,6 @@
 #Simple remote calculations service: 
 
-Clients request expressions' calculationsпросят сервер вычислить выражение (для начала содержащее только одну арифметическую операцию +, -, *, / ) 
+Clients request expressions' calculations(containing one arithmetical operation +, -, *, / ) 
 
 Server returns the results
 
